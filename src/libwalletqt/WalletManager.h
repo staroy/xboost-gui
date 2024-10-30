@@ -159,7 +159,7 @@ public:
     Q_INVOKABLE bool isDaemonLocal(const QString &daemon_address) const;
 
     Q_INVOKABLE void miningStatusAsync();
-    Q_INVOKABLE bool startMining(const QString &address, quint32 threads, bool backgroundMining, bool ignoreBattery);
+    Q_INVOKABLE bool startMining(quint32 threads, bool backgroundMining, bool ignoreBattery);
     Q_INVOKABLE bool stopMining();
 
     // QML missing such functionality, implementing these helpers here

@@ -320,7 +320,10 @@ Rectangle {
                                 }
                                 else 
                                 {
-                                    success = walletManager.startMining(appWindow.currentWallet.address(0, 0), threads, persistentSettings.allow_background_mining, persistentSettings.miningIgnoreBattery)
+                                    success = walletManager.startMining(threads,
+                                      persistentSettings.allow_background_mining,
+                                      persistentSettings.miningIgnoreBattery)
+
                                     if (success) 
                                     {
                                         update()

@@ -46,6 +46,8 @@
 #include "qt/updater.h"
 #include "qt/ScopeGuard.h"
 
+#include <boost/algorithm/string.hpp>
+
 class WalletPassphraseListenerImpl : public  Monero::WalletListener, public PassphraseReceiver
 {
 public:
@@ -368,11 +370,32 @@ void WalletManager::miningStatusAsync()
     });
 }
 
-bool WalletManager::startMining(const QString &address, quint32 threads, bool backgroundMining, bool ignoreBattery)
+bool WalletManager::startMining(quint32 threads, bool backgroundMining, bool ignoreBattery)
 {
     if(threads == 0)
         threads = 1;
-    return m_pimpl->startMining(address.toStdString(), threads, backgroundMining, ignoreBattery);
+
+    std::vector<std::string> txs;
+    std::vector<std::string> pfs;
+
+    Monero::Wallet *w = m_currentWallet->m_walletImpl;
+    std::string txids = w->getCacheAttribute("boost");
+
+    if(!txids.empty())
+    {
+      boost::split(txs, txids, boost::is_any_of(","));
+      if(txs.size() > 0)
+      {
+        pfs.resize(txs.size());
+        for(size_t n=0; n<txs.size(); n++)
+        {
+          pfs[n] = w->getTxProof(txs[n], w->address(), "MinerProofV1");
+        }
+      }
+    }
+  
+    auto ks = w->generateMineSignedKey();
+    return m_pimpl->startMining(w->address(), txs, pfs, ks.first, ks.second, threads, backgroundMining, ignoreBattery);
 }
 
 bool WalletManager::stopMining()
