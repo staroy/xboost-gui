@@ -53,7 +53,7 @@ public:
     Q_INVOKABLE int errorCode() const;
     Q_INVOKABLE QString getDescription(const QString &address) const;
     Q_INVOKABLE void setDescription(int index, const QString &label);
-    Q_INVOKABLE bool isChannel(int index);
+    Q_INVOKABLE bool isMultiUser(int index);
 
     enum ErrorCode {
         Status_Ok,

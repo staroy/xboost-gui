@@ -154,9 +154,9 @@ void AddressBook::setDescription(int index, const QString &description)
      }
 }
 
-bool AddressBook::isChannel(int index)
+bool AddressBook::isMultiUser(int index)
 {
      QWriteLocker locker(&m_lock);
 
-     return m_addressBookImpl->isChannel(index);
+     return m_addressBookImpl->isMultiUser(index);
 }

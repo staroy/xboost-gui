@@ -57,9 +57,9 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
 {
     QVariant result; auto messageList = m_messageList;
 
-    if(role == AddressBookIsChannelRole)
+    if(role == AddressBookIsMultiUserRole)
     {
-        result = m_addressBook->isChannel(index.row());
+        result = m_addressBook->isMultiUser(index.row());
         return result;
     }
 
@@ -124,7 +124,7 @@ QHash<int, QByteArray> UnsortedAddressBookModel::roleNames() const
     roleNames.insert(AddressBookAddressRole, "address");
     roleNames.insert(AddressBookPaymentIdRole, "paymentId");
     roleNames.insert(AddressBookDescriptionRole, "description");
-    roleNames.insert(AddressBookIsChannelRole, "isChannel");
+    roleNames.insert(AddressBookIsMultiUserRole, "isMultiUser");
     roleNames.insert(AddressBookRowIdRole, "rowId");
     roleNames.insert(AddressBookUnreadCountRole, "unreadCount");
     roleNames.insert(AddressBookLastTimeRole, "lastTimeSecs");

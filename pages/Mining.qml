@@ -40,7 +40,7 @@ Rectangle {
     color: "transparent"
     property alias miningHeight: mainLayout.height
     property double currentHashRate: 0
-    property int threads: idealThreadCount / 2
+    property int threads: 1 //idealThreadCount / 2
     property alias stopMiningEnabled: stopSoloMinerButton.enabled
     property string args: ""
     ColumnLayout {

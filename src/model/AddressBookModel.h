@@ -44,7 +44,7 @@ public:
         AddressBookRole = Qt::UserRole + 1, // for the AddressBookRow object;
         AddressBookAddressRole,
         AddressBookDescriptionRole,
-        AddressBookIsChannelRole,
+        AddressBookIsMultiUserRole,
         AddressBookPaymentIdRole,
         AddressBookRowIdRole,
         AddressBookUnreadCountRole,

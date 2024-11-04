@@ -895,11 +895,12 @@ ApplicationWindow {
     }
 
     // called on "transfer"
-    function handlePayment(recipients, paymentId, mixinCount, priority, message, unprunable, description, createFile) {
+    function handlePayment(recipients, paymentId, mixinCount, locking, priority, message, unprunable, description, createFile) {
         console.log("Creating transaction: ")
         console.log("\trecipients: ", recipients,
                     ", payment_id: ", paymentId,
                     ", mixins: ", mixinCount,
+                    ", locking: ", locking,
                     ", priority: ", priority,
                     ", description: ", description);
 
@@ -920,8 +921,10 @@ ApplicationWindow {
         txConfirmationPopup.transactionUnprunable = unprunable;
         txConfirmationPopup.open();
 
+        var unlockTime = locking > 0 ? currentWallet.daemonBlockChainHeight() + locking : 0;
+
         if (recipientAll) {
-            currentWallet.createTransactionAllAsync(recipientAll.address, paymentId, mixinCount, 0, priority, message, unprunable, 0, 0);
+            currentWallet.createTransactionAllAsync(recipientAll.address, paymentId, mixinCount, unlockTime, priority, message, unprunable, 0, 0);
         } else {
             const addresses = recipients.map(function (recipient) {
                 return recipient.address;
@@ -929,7 +932,7 @@ ApplicationWindow {
             const amountsxmr = recipients.map(function (recipient) {
                 return recipient.amount;
             });
-            currentWallet.createTransactionAsync(addresses, paymentId, amountsxmr, mixinCount, 0, priority, message, unprunable, 0, 0);
+            currentWallet.createTransactionAsync(addresses, paymentId, amountsxmr, mixinCount, unlockTime, priority, message, unprunable, 0, 0);
         }
     }
 

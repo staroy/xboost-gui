@@ -19,12 +19,14 @@ public:
         MessageFromAddressRole = Qt::UserRole + 1,
         MessageFromLabelRole,
         MessageTextRole,
+        MessageEnableCommentsRole,
         MessageTimeRole,
         MessageTimeStrRole,
         MessageIndexRole,
         MessageTxidRole,
         MessageSendByMeRole,
-        MessageIsChannelRole,
+        MessageIsMultiUserRole,
+        MessageIsTitleRole,
         MessageABRole,
         MessageABColorRole,
         MessageABBackgroundRole
@@ -35,8 +37,11 @@ public:
 
     Q_INVOKABLE int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     Q_INVOKABLE QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    Q_INVOKABLE void append(const QString& message, quint64 amount, bool unprunable);
-    Q_INVOKABLE void setCurrent(const QString& address, bool isChannel = false);
+    Q_INVOKABLE void append(const QString& message, bool enable_comments, quint64 amount, bool unprunable);
+    Q_INVOKABLE void setCurrent(const QString& address, bool isMultiUser = false);
+    Q_INVOKABLE bool isSubChat() const;
+    Q_INVOKABLE void setSubChat(const QString& txid);
+    Q_INVOKABLE void setToParent();
     Q_INVOKABLE void setSelf(const QString& address);
 
     QHash<int, QByteArray> roleNames() const  override;
@@ -45,12 +50,15 @@ public:
 protected:
     void received(const QString &chat, quint64 n, const QString &txid);
     void removed(const QString &chat, quint64 n, const QString &txid);
+    const QString& getCurrentChat() const;
+    const QString& getParentChat() const;
 
     AddressBook *m_addressBook;
     MessageList *m_messageList;
     QString m_currentAddress;
-    bool m_isChannel;
+    bool m_isMultiUser;
     QString m_selfAddress;
+    QString m_currentSubChat;
 };
 
 class MessageListModel : public QSortFilterProxyModel
@@ -68,8 +76,11 @@ public:
   Q_INVOKABLE void setFilterString(QString string);
   Q_INVOKABLE void setSortOrder(bool checked);
 
-  Q_INVOKABLE void append(const QString& text, quint64 amount, bool unprunable);
-  Q_INVOKABLE void setCurrent(const QString& Address, bool isChannel = false);
+  Q_INVOKABLE void append(const QString& text, bool enable_comments, quint64 amount, bool unprunable);
+  Q_INVOKABLE void setCurrent(const QString& Address, bool isMultiUser = false);
+  Q_INVOKABLE void setSubChat(const QString& txid);
+  Q_INVOKABLE bool isSubChat();
+  Q_INVOKABLE void setToParent();
 
   UnsortedMessageListModel& source();
 

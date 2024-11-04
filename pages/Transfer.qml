@@ -45,7 +45,7 @@ import "../js/Utils.js" as Utils
 
 Rectangle {
     id: root
-    signal paymentClicked(var recipients, string paymentId, int mixinCount, int priority, string message, bool unprunable, string description)
+    signal paymentClicked(var recipients, string paymentId, int mixinCount, int locking, int priority, string message, bool unprunable, string description)
     signal sweepUnmixableClicked()
 
     color: "transparent"
@@ -736,7 +736,8 @@ Rectangle {
                         if (!sendButton.enabled || estimatedFee == null) {
                             return ""
                         }
-                        return "~%1 " + coin_name + "%2 %3".arg(estimatedFee)
+                        return "~%1 %2 %3 %4".arg(estimatedFee)
+                            .arg(coin_name)
                             .arg(estimatedFeeFiat)
                             .arg(qsTr("fee") + translationManager.emptyString);
                     }
@@ -875,10 +876,26 @@ Rectangle {
       }
 
       RowLayout {
+          MoneroComponents.LineEdit {
+              id: lockingBlocks
+              Layout.maximumWidth: 200
+              labelFontSize: 16
+              labelText: qsTr("Locking") + translationManager.emptyString
+              fontSize: 16
+              placeholderFontSize: 16
+              placeholderText: qsTr("Paste blocks count") + translationManager.emptyString
+              readOnly: false
+              enabled: true
+              validator: RegExpValidator {
+                  regExp: /^\s*(\d{1,8})?([\.,]\d{1,12})?\s*$/
+              }
+          }
           StandardButton {
               id: sendButton
               rightIcon: "qrc:///images/rightArrow.png"
-              Layout.topMargin: 4
+              Layout.leftMargin: 25
+              Layout.bottomMargin: 1
+              Layout.alignment: Qt.AlignBottom
               text: qsTr("Send") + translationManager.emptyString
               enabled: !sendButtonWarningBox.visible && !warningContent && !recipientModel.hasEmptyAddress() && !paymentIdWarningBox.visible
               onClicked: {
@@ -886,7 +903,7 @@ Rectangle {
                   var priority = priorityModelV5.get(priorityDropdown.currentIndex).priority
                   console.log("priority: " + priority)
                   setPaymentId(paymentIdLine.text.trim());
-                  root.paymentClicked(recipientModel.getRecipients(), paymentIdLine.text, root.mixin, priority, messageLine.text, unprunable, descriptionLine.text)
+                  root.paymentClicked(recipientModel.getRecipients(), paymentIdLine.text, root.mixin, lockingBlocks !== "" ? parseInt(lockingBlocks) : 0, priority, messageLine.text, unprunable, descriptionLine.text)
               }
           }
       }

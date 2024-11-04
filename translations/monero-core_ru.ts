@@ -2696,8 +2696,13 @@ You can change the password in the wallet settings.</source>
     </message>
     <message>
         <location filename="../pages/Transfer.qml" line="91"/>
-        <source></source>
-        <translation></translation>
+        <source>Locking</source>
+        <translation>Заморозить</translation>
+    </message>
+    <message>
+        <location filename="../pages/Transfer.qml" line="91"/>
+        <source>Paste blocks count</source>
+        <translation>Количество блоков</translation>
     </message>
     <message>
         <location filename="../pages/Transfer.qml" line="1172"/>

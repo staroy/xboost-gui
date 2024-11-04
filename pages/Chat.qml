@@ -54,11 +54,18 @@ Rectangle {
 
     property int chatHeight: appWindow.height - 80
     property string currentAddress: ""
-    property bool currentAddressIsChannel: false
     readonly property string vertexColor: MoneroComponents.Style.blackTheme ? "#303030" : "#C9C9C9"
     readonly property string itemBorderColor: MoneroComponents.Style.blackTheme ? "#404040" : "#B9B9B9"
     readonly property string dimmedColor: MoneroComponents.Style.blackTheme ? "#c9c9c9" : "#474747"
     readonly property string dimmed2Color: MoneroComponents.Style.blackTheme ? "#777777" : "#999999"
+
+    function setSubChat(txid)
+    {
+        currentWallet.messageListModel.setSubChat(txid);
+        btnToParent.visible = true
+        enableCommentsCheckBox.visible = false
+    }
+
     SplitView {
         id: splitView
         orientation: Qt.Horizontal
@@ -249,8 +256,7 @@ Rectangle {
                             acceptedButtons: Qt.LeftButton
                             onClicked: {
                                 currentAddress = address
-                                currentAddressIsChannel = isChannel
-                                currentWallet.messageListModel.setCurrent(address, isChannel)
+                                currentWallet.messageListModel.setCurrent(address, isMultiUser)
                             }
                         }
                     }
@@ -267,6 +273,36 @@ Rectangle {
             RowLayout {
                 Layout.alignment: Qt.AlignTop
                 Layout.leftMargin: 4
+
+                Rectangle {
+                    id: btnToParent
+                    color: "transparent"
+                    visible: false
+
+                    width: 20
+                    height: 20
+
+                    Layout.topMargin: 28
+
+                    Text {
+                        text: FontAwesome.arrowLeft
+                        font.family: FontAwesome.fontFamilySolid
+                        font.pixelSize: 18
+                        color: dimmed2Color
+                        font.styleName: "Solid"
+                        opacity: 0.75
+                    }
+                
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            currentWallet.messageListModel.setToParent()
+                            btnToParent.visible = false
+                            enableCommentsCheckBox.visible = true
+                        }
+                    }
+                }
 
                 MoneroComponents.LineEdit {
                     id: messageFilter
@@ -311,10 +347,10 @@ Rectangle {
                         readonly property string backgroundColor: sendByMe ? (MoneroComponents.Style.blackTheme ? "#333333" : "#cccccc") : (MoneroComponents.Style.blackTheme ? "#333333" : "#cccccc")
                         readonly property string timeColor: sendByMe ? (MoneroComponents.Style.blackTheme ? "#777777" : "#999999") : MoneroComponents.Style.dimmedFontColor
                         readonly property string textColor: sendByMe ? dimmedColor : MoneroComponents.Style.defaultFontColor
-                        height: 32 + textItemHeight
+                        height: 36 + (isEnableComments ? 22 : 0) + (isTitle ? 5 : 0) + textItemHeight
 
                         Rectangle {
-                            visible: isChannel && !sendByMe
+                            visible: isMultiUser && !sendByMe
                             id: "avatar2"
                             radius: 14
                             y:10
@@ -332,9 +368,9 @@ Rectangle {
 
                         Rectangle {
                             id: textArea
-                            x: sendByMe ? messageFilter.width - textItemWidth : (isChannel ? 40 : 10)
-                            y: 5
-                            height: textItemHeight + 25
+                            x: isTitle ? (messageListRow.width - textItemWidth)/2 : (sendByMe ? messageListRow.width - textItemWidth : (isMultiUser ? 40 : 10))
+                            y: 6
+                            height: textItemHeight + 25 + (isEnableComments ? 22 : 0)
                             width: textItemWidth
                             radius: 10
                             color: "transparent"
@@ -384,6 +420,44 @@ Rectangle {
                                 color: dimmed2Color
                                 text: time
                             }
+
+                            Label {
+                                id: textComments
+                                y: textItemHeight + 17
+                                x: textItemWidth / 2 - 12
+                                font.pixelSize: 16
+                                font.family: MoneroComponents.Style.fontMonoRegular.name
+                                color: textColor
+                                text: "..."
+                                visible: isEnableComments
+                            }
+
+                            Rectangle {
+                                id: btnComments
+                                color: "transparent"
+
+                                y: textItemHeight + 22
+                                x: textItemWidth - 24
+                            
+                                width: 20
+                                height: 20
+
+                                visible: isEnableComments && !isTitle
+
+                                Text {
+                                    text: FontAwesome.arrowRight
+                                    font.family: FontAwesome.fontFamilySolid
+                                    font.pixelSize: 16
+                                    color: dimmed2Color
+                                    font.styleName: "Solid"
+                                    opacity: 0.75
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: pageChat.setSubChat(txid);
+                                }
+                            }
                         }
                     }
                     ScrollBar.vertical: ScrollBar {}
@@ -397,10 +471,18 @@ Rectangle {
                 Layout.alignment: Qt.AlignBottom
                 Layout.leftMargin: 4
 
+                MoneroComponents.CheckBox {
+                    id: enableCommentsCheckBox
+                    width: 30
+                    visible: true
+                    checked: false
+                    tooltip: qsTr("Enable comments") + translationManager.emptyString
+                }
+
                 MoneroComponents.LineEditMulti {
                     id: textToSend
                     Layout.bottomMargin: 25
-                    Layout.rightMargin: 10
+                    Layout.leftMargin: 2
                     fontSize: 16
                     labelFontSize: 14
                     labelText: " "
@@ -413,7 +495,10 @@ Rectangle {
                     focus: true
                     function onEnterPressed() {
                       if(textToSend.text.length > 0) {
-                        currentWallet.messageListModel.append(textToSend.text.substring(0, textToSend.text.length), 0, false)
+                        currentWallet.messageListModel.append(
+                            textToSend.text.substring(0, textToSend.text.length),
+                            enableCommentsCheckBox.checked,
+                            0, false)
                         textToSend.text = ""
                       }
                     }
@@ -423,6 +508,7 @@ Rectangle {
                     color: "transparent"
 
                     Layout.topMargin: 5
+                    Layout.leftMargin: 5
                     Layout.preferredWidth: 20
                     Layout.preferredHeight: 20
 
@@ -441,7 +527,10 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            currentWallet.messageListModel.append(textToSend.text.substring(0, textToSend.text.length), 0, false)
+                            currentWallet.messageListModel.append(
+                                textToSend.text.substring(0, textToSend.text.length),
+                                enableCommentsCheckBox.checked,
+                                0, false)
                             textToSend.text = ""
                         }
                     }

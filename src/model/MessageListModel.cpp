@@ -8,13 +8,13 @@ UnsortedMessageListModel::UnsortedMessageListModel(QObject *parent, AddressBook 
     : QAbstractListModel(parent)
     , m_addressBook(address)
     , m_messageList(message)
-    , m_isChannel(false)
+    , m_isMultiUser(false)
 {
 }
 
 int UnsortedMessageListModel::rowCount(const QModelIndex &) const
 {
-    return m_messageList->getCnt(m_currentAddress);
+    return m_messageList->getCnt( getCurrentChat() ) + (isSubChat() ? 1 : 0);
 }
 
 QVariant UnsortedMessageListModel::data(const QModelIndex &index, int role) const
@@ -22,8 +22,24 @@ QVariant UnsortedMessageListModel::data(const QModelIndex &index, int role) cons
     QString text, sender, txid;
     std::string ab, ab_color, ab_background;
     quint64 height; quint64 ts;
+    bool enable_comments;
 
-    if(m_messageList->get(m_currentAddress, index.row(), sender, text, height, ts, txid))
+    bool issc = isSubChat();
+    bool r = false;
+    bool isTitle = issc && index.row()==0;
+  
+
+    if(isTitle)
+    {
+        txid = getCurrentChat();
+        r = m_messageList->get(txid, sender, text, enable_comments, height, ts);
+    }
+    else
+    {
+        r = m_messageList->get(getCurrentChat(), index.row() - (issc ? 1 : 0), sender, text, enable_comments, height, ts, txid);
+    }
+
+    if(r)
     {
       auto getAddressRow = [&](const QString& addr) {
          for(size_t n=0; n<m_addressBook->count() && ab.empty(); n++) {
@@ -37,15 +53,17 @@ QVariant UnsortedMessageListModel::data(const QModelIndex &index, int role) cons
 
       switch(role)
       {
-      case MessageFromAddressRole: return sender == m_currentAddress.length() > 0 ? "self" : sender;
+      case MessageFromAddressRole: return sender;
       case MessageFromLabelRole: return m_addressBook->getDescription(sender);
       case MessageTextRole: return text;
+      case MessageEnableCommentsRole: return enable_comments;
       case MessageTimeRole: return ts;
       case MessageTimeStrRole: return QDateTime().fromSecsSinceEpoch(ts).toString("dd.MM.yyyy hh:mm");
       case MessageTxidRole: return txid;
       case MessageIndexRole: return index.row();
       case MessageSendByMeRole: return sender == m_selfAddress;
-      case MessageIsChannelRole: return m_isChannel;
+      case MessageIsMultiUserRole: return m_isMultiUser || m_currentSubChat.length() > 0;
+      case MessageIsTitleRole: return isTitle;
       case MessageABRole:
       case MessageABColorRole:
       case MessageABBackgroundRole:
@@ -61,16 +79,16 @@ QVariant UnsortedMessageListModel::data(const QModelIndex &index, int role) cons
     return QVariant();
 }
 
-void UnsortedMessageListModel::append(const QString& text, quint64 amount, bool unprunable)
+void UnsortedMessageListModel::append(const QString& text, bool enable_comments, quint64 amount, bool unprunable)
 {
-    quint64 n = m_messageList->getCnt(m_currentAddress);
+    quint64 n = m_messageList->getCnt(getCurrentChat()) + (isSubChat() ? 1 : 0);
     beginInsertRows(QModelIndex(), int(n), int(n));
-    quint64 new_n = m_messageList->send(m_currentAddress, text, amount, unprunable);
+    quint64 new_n = m_messageList->send(getCurrentChat(), text, enable_comments && !isSubChat(), amount, unprunable, getParentChat());
     if(new_n != quint64(-1))
     {
         endInsertRows();
-        QString sender_addr; QString atext; quint64 height; quint64 ts; QString txid;
-        m_messageList->get(m_currentAddress, new_n, sender_addr, atext, height, ts, txid);
+        QString sender_addr; QString atext; bool _enable_comments; quint64 height; quint64 ts; QString txid;
+        m_messageList->get(getCurrentChat(), new_n, sender_addr, atext, _enable_comments, height, ts, txid);
     }
     else
     {
@@ -84,17 +102,36 @@ void UnsortedMessageListModel::received(const QString &chat, quint64 n, const QS
 
 void UnsortedMessageListModel::removed(const QString &chat, quint64 n, const QString &txid)
 {
-    if(m_currentAddress == chat)
+    if(getCurrentChat() == chat)
     {
         beginInsertRows(QModelIndex(), int(n), int(n));
         endInsertRows();
     }
 }
 
-void UnsortedMessageListModel::setCurrent(const QString& address, bool isChannel)
+bool UnsortedMessageListModel::isSubChat() const
+{
+    return m_currentSubChat.length() > 0;
+}
+
+void UnsortedMessageListModel::setSubChat(const QString& txid)
 {
     beginResetModel();
-    m_isChannel = isChannel;
+    m_currentSubChat = txid;
+    endResetModel();
+}
+
+void UnsortedMessageListModel::setToParent()
+{
+    beginResetModel();
+    m_currentSubChat = "";
+    endResetModel();
+}
+
+void UnsortedMessageListModel::setCurrent(const QString& address, bool isMultiUser)
+{
+    beginResetModel();
+    m_isMultiUser = isMultiUser;
     m_currentAddress = address;
     endResetModel();
 }
@@ -110,16 +147,29 @@ QHash<int, QByteArray> UnsortedMessageListModel::roleNames() const
     roleNames.insert(MessageFromAddressRole, "address");
     roleNames.insert(MessageFromLabelRole, "desc");
     roleNames.insert(MessageTextRole, "text");
+    roleNames.insert(MessageEnableCommentsRole, "isEnableComments");
     roleNames.insert(MessageTimeRole, "timeSecs");
     roleNames.insert(MessageTimeStrRole, "time");
     roleNames.insert(MessageTxidRole, "txid");
     roleNames.insert(MessageIndexRole, "n_index");
     roleNames.insert(MessageSendByMeRole, "sendByMe");
-    roleNames.insert(MessageIsChannelRole, "isChannel");
+    roleNames.insert(MessageIsMultiUserRole, "isMultiUser");
+    roleNames.insert(MessageIsTitleRole, "isTitle");
     roleNames.insert(MessageABRole, "Ab");
     roleNames.insert(MessageABColorRole, "AbColor");
     roleNames.insert(MessageABBackgroundRole, "AbBackground");
     return roleNames;
+}
+
+const QString& UnsortedMessageListModel::getCurrentChat() const
+{
+    return m_currentSubChat.length() == 0 ? m_currentAddress : m_currentSubChat;
+}
+
+const QString& UnsortedMessageListModel::getParentChat() const
+{
+    static QString null_str;
+    return m_currentSubChat.length() > 0 ? m_currentAddress : null_str;
 }
 
 MessageListModel::MessageListModel(QObject *parent, AddressBook *address, MessageList *message)
@@ -172,16 +222,33 @@ void MessageListModel::setSortOrder(bool checked)
   }
 }
 
-void MessageListModel::append(const QString& sms, quint64 amount, bool unprunable)
+void MessageListModel::append(const QString& sms, bool enable_comments, quint64 amount, bool unprunable)
 {
-  src_.append(sms, amount, unprunable);
+  src_.append(sms, enable_comments, amount, unprunable);
   emit addressBookInvalidate();
 }
 
-void MessageListModel::setCurrent(const QString& Address, bool isChannel)
+void MessageListModel::setCurrent(const QString& Address, bool isMultiUser)
 {
-  src_.setCurrent(Address, isChannel);
+  src_.setCurrent(Address, isMultiUser);
   emit addressBookInvalidate();
+}
+
+bool MessageListModel::isSubChat()
+{
+  return src_.isSubChat();
+}
+
+void MessageListModel::setSubChat(const QString& txid)
+{
+  src_.setSubChat(txid);
+  invalidate();
+}
+
+void MessageListModel::setToParent()
+{
+  src_.setToParent();
+  invalidate();
 }
 
 UnsortedMessageListModel& MessageListModel::source()
