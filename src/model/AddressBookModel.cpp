@@ -63,7 +63,7 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
         return result;
     }
 
-    bool found = m_addressBook->getRow(index.row(), [&messageList, &result, &role](const Monero::AddressBookRow &row) {
+    bool found = m_addressBook->getRow(index.row(), [&messageList, &result, &role, &index](const Monero::AddressBookRow &row) {
         switch (role) {
         case AddressBookAddressRole:
             result = QString::fromStdString(row.getAddress());
@@ -76,7 +76,7 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
             break;
         case AddressBookRowIdRole:
             // Qt doesnt support size_t overload type casting
-            result.setValue(row.getRowId());
+            result.setValue(index.row());
             break;
         case AddressBookUnreadCountRole:
             if(messageList)
@@ -100,7 +100,7 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
             result = QString::fromStdString(row.getAbBackground());
             break;
         case AddressBookUnsortedId:
-            result = int(row.getRowId());
+            result = int(index.row());
             break;
         default:
             qCritical() << "Unimplemented role " << role;

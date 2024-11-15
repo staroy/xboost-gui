@@ -32,7 +32,6 @@
 AddressBook::AddressBook(Monero::AddressBook *abImpl,QObject *parent)
   : QObject(parent), m_addressBookImpl(abImpl)
 {
-    getAll();
 }
 
 QString AddressBook::errorString() const
@@ -45,118 +44,106 @@ int AddressBook::errorCode() const
     return m_addressBookImpl->errorCode();
 }
 
-void AddressBook::getAll()
+bool AddressBook::newMultiUserRow(const QString &description) const
 {
+    bool result;
     emit refreshStarted();
 
     {
-        QWriteLocker locker(&m_lock);
-
-        m_addresses.clear();
-        m_rows.clear();
-        for (auto &abr: m_addressBookImpl->getAll()) {
-            m_addresses.insert(QString::fromStdString(abr->getAddress()), m_rows.size());
-            m_rows.append(abr);
-        }
+        QReadLocker locker(&m_lock);
+        result = m_addressBookImpl->newMultiUserRow(description.toStdString(), [](Monero::AddressBookRow& row, std::size_t rowId){});
     }
 
     emit refreshFinished();
+    return result;
 }
 
 bool AddressBook::getRow(int index, std::function<void (Monero::AddressBookRow &)> callback) const
 {
     QReadLocker locker(&m_lock);
 
-    if (index < 0 || index >= m_rows.size())
-    {
-        return false;
-    }
+    //if (index < 0 || index >= m_addressBookImpl->count())
+    //{
+    //    return false;
+    //}
 
-    callback(*m_rows.value(index));
-    return true;
+    return m_addressBookImpl->getRow(index, callback);
 }
 
 bool AddressBook::addRow(const QString &address, const QString &payment_id, const QString &description)
 {
-    //  virtual bool addRow(const std::string &dst_addr , const std::string &payment_id, const std::string &description) = 0;
     bool result;
+    emit refreshStarted();
 
     {
+        size_t rowId;
         QWriteLocker locker(&m_lock);
         result = m_addressBookImpl->addRow({
-            m_addressBookImpl->getAll().size(),
             address.toStdString(),
             payment_id.toStdString(),
             description.toStdString(),
             "", "", ""
-        });
+        }, rowId);
     }
 
-    if (result)
-    {
-        getAll();
-    }
-
+    emit refreshFinished();
     return result;
 }
 
 bool AddressBook::deleteRow(int rowId)
 {
     bool result;
+    emit refreshStarted();
 
     {
         QWriteLocker locker(&m_lock);
-
         result = m_addressBookImpl->deleteRow(rowId);
     }
 
-    // Fetch new data from wallet2.
-    if (result)
-    {
-        getAll();
-    }
-
+    emit refreshFinished();
     return result;
 }
 
 quint64 AddressBook::count() const
 {
     QReadLocker locker(&m_lock);
-
-    return m_rows.size();
+    return m_addressBookImpl->count();
 }
 
 QString AddressBook::getDescription(const QString &address) const
 {
     QReadLocker locker(&m_lock);
 
-    const QMap<QString, size_t>::const_iterator it = m_addresses.find(address);
-    if (it == m_addresses.end())
+    int idx = m_addressBookImpl->lookupAddress(address.toStdString());
+    if(idx < 0)
+         return QString();
+
+    QString description;
+    if(m_addressBookImpl->getRow(idx, [&description](const Monero::AddressBookRow& row)
+        {
+            description = QString::fromStdString(row.getDescription());
+        }))
     {
-        return {};
-    }
-    return QString::fromStdString(m_rows.value(*it)->getDescription());
+        return description;
+    };
+    return QString();
 }
 
 void AddressBook::setDescription(int index, const QString &description)
 {
-     bool result;
+    emit refreshStarted();
 
-     {
-         QWriteLocker locker(&m_lock);
+    {
+        QWriteLocker locker(&m_lock);
+        m_addressBookImpl->setDescription(index, description.toStdString());
+    }
 
-         result = m_addressBookImpl->setDescription(index, description.toStdString());
-     }
-
-     if (result)
-     {
-         getAll();
-     }
+    emit refreshFinished();
 }
 
 bool AddressBook::isMultiUser(int index)
 {
-     QWriteLocker locker(&m_lock);
+    QWriteLocker locker(&m_lock);
 
-     return m_addressBookImpl->isMultiUser(index);
+    return m_addressBookImpl->isMultiUser(index);
 }

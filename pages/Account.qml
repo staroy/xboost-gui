@@ -368,7 +368,7 @@ Rectangle {
                                 }
                             }
 
-                            MoneroComponents.IconButton {
+                            /*MoneroComponents.IconButton {
                                 id: copyChannelButton
                                 image: "qrc:///images/copy.svg"
                                 fontAwesomeFallbackIcon: FontAwesome.clipboard
@@ -385,7 +385,7 @@ Rectangle {
                                     clipboard.setText(appWindow.currentWallet.channelAddress);
                                     appWindow.showStatusMessage(qsTr("Address copied to clipboard"),3);
                                 }
-                            }
+                            }*/
                         }
                     }
 

@@ -134,15 +134,28 @@ Rectangle {
                 }
             }
 
-            MoneroComponents.StandardButton {
-                id: addAddressButton
-                Layout.bottomMargin: 8
+            RowLayout {
                 Layout.alignment: Qt.AlignRight
-                small: true
-                text: qsTr("Add address") + translationManager.emptyString
-                fontSize: 13
-                onClicked: {
-                    root.showAddAddress();
+                MoneroComponents.StandardButton {
+                    id: newMultiUserButton
+                    Layout.bottomMargin: 8
+                    small: true
+                    text: qsTr("New multi user") + translationManager.emptyString
+                    fontSize: 13
+                    onClicked: {
+                        root.showNewMultiUser();
+                    }
+                }
+                
+                MoneroComponents.StandardButton {
+                    id: addAddressButton
+                    Layout.bottomMargin: 8
+                    small: true
+                    text: qsTr("Add address") + translationManager.emptyString
+                    fontSize: 13
+                    onClicked: {
+                        root.showAddAddress();
+                    }
                 }
             }
 
@@ -501,6 +514,78 @@ Rectangle {
                 }
             }
         }
+        ColumnLayout {
+            id: newMultiUserLayout
+            visible: false
+            spacing: 0
+
+            MoneroComponents.Label {
+                fontSize: 32
+                wrapMode: Text.WordWrap
+                text: qsTr("New multi user") + translationManager.emptyString
+            }
+
+            MoneroComponents.LineEdit {
+                id: descriptionNmuLine
+                KeyNavigation.tab: addNmuButton.enabled ? addNmuButton : cancelNmuButton
+                Layout.topMargin: 20
+                Layout.fillWidth: true
+                fontSize: 16
+                placeholderFontSize: 16
+                labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style> %1"
+                    .arg(qsTr("Description")) + translationManager.emptyString
+                placeholderText: qsTr("Add a name...") + translationManager.emptyString
+                onAccepted: addNmuButton.enabled ? addNmuButton.clicked() : ""
+            }
+            RowLayout {
+                Layout.topMargin: 20
+                Layout.alignment: Qt.AlignRight
+
+                MoneroComponents.StandardButton {
+                    id: cancelNmuButton
+                    KeyNavigation.backtab: addNmuButton
+                    small: true
+                    text: qsTr("Cancel") + translationManager.emptyString
+                    primary: false
+                    onClicked: root.showAddressBook();
+                }
+
+                MoneroComponents.StandardButton {
+                    id: deleteNmuButton
+                    KeyNavigation.backtab: cancelNmuButton
+                    small: true
+                    visible: root.editEntry
+                    text: qsTr("Delete") + translationManager.emptyString
+                    primary: false
+                    onClicked: {
+                        currentWallet.addressBook.deleteRow(addressBookListView.unsortedCurrentIndex);
+                        root.showAddressBook();
+                    }
+                }
+
+                MoneroComponents.StandardButton {
+                    id: addNmuButton
+                    KeyNavigation.backtab: descriptionNmuLine
+                    KeyNavigation.tab: cancelNmuButton
+                    small: true
+                    text: qsTr("New") + translationManager.emptyString
+                    enabled: descriptionNmuLine.text.length > 0
+                    onClicked: {
+                        if (currentWallet.addressBook.newMultiUserRow(descriptionNmuLine.text)) {
+                            console.log("Multi user entry created")
+                        } else {
+                            informationPopup.title = qsTr("Error") + translationManager.emptyString;
+                            // TODO: check currentWallet.addressBook.errorString() instead.
+                            informationPopup.text  = currentWallet.addressBook.errorString()
+
+                            informationPopup.onCloseCallback = null
+                            informationPopup.open();
+                        }
+                        root.showAddressBook()
+                    }
+                }
+            }
+        }
     }
 
     function checkInformation(address, nettype) {
@@ -519,6 +604,7 @@ Rectangle {
         addressBookEmptyLayout.visible = addressBookListView.count == 0
         addressBookLayout.visible = addressBookListView.count >= 1;
         addContactLayout.visible = false;
+        newMultiUserLayout.visible = false;
         clearFields();
     }
 
@@ -527,6 +613,16 @@ Rectangle {
         addressBookEmptyLayout.visible = false
         addressBookLayout.visible = false;
         addContactLayout.visible = true;
+        newMultiUserLayout.visible = false;
+        addressLine.forceActiveFocus();
+    }
+
+    function showNewMultiUser() {
+        root.editEntry = false;
+        addressBookEmptyLayout.visible = false
+        addressBookLayout.visible = false;
+        addContactLayout.visible = false;
+        newMultiUserLayout.visible = true;
         addressLine.forceActiveFocus();
     }
 

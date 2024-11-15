@@ -133,6 +133,7 @@ void UnsortedMessageListModel::setCurrent(const QString& address, bool isMultiUs
     beginResetModel();
     m_isMultiUser = isMultiUser;
     m_currentAddress = address;
+    m_currentSubChat = "";
     endResetModel();
 }
 
@@ -189,7 +190,7 @@ MessageListModel::~MessageListModel()
 void MessageListModel::msgReceived(const QString &chat, quint64 n, const QString &txid)
 {
   src_.received(chat, n, txid);
-  if(src_.m_currentAddress == chat)
+  if(src_.getCurrentChat() == chat)
   {
     beginResetModel();
     dataChanged(index(n, 0), index(n, 0));

@@ -45,6 +45,7 @@ class AddressBook : public QObject
 {
     Q_OBJECT
 public:
+    Q_INVOKABLE bool newMultiUserRow(const QString &description) const;
     Q_INVOKABLE bool getRow(int index, std::function<void (Monero::AddressBookRow &)> callback) const;
     Q_INVOKABLE bool addRow(const QString &address, const QString &payment_id, const QString &description);
     Q_INVOKABLE bool deleteRow(int rowId);
@@ -64,9 +65,6 @@ public:
 
     Q_ENUM(ErrorCode);
 
-private:
-    void getAll();
-
 signals:
     void refreshStarted() const;
     void refreshFinished() const;
@@ -79,8 +77,6 @@ private:
     friend class Wallet;
     Monero::AddressBook * m_addressBookImpl;
     mutable QReadWriteLock m_lock;
-    QList<Monero::AddressBookRow*> m_rows;
-    QMap<QString, size_t> m_addresses;
 };
 
 #endif // ADDRESSBOOK_H

@@ -66,6 +66,14 @@ Rectangle {
         enableCommentsCheckBox.visible = false
     }
 
+    function setCurrent(address, isMultiUser)
+    {
+        currentAddress = address
+        currentWallet.messageListModel.setCurrent(address, isMultiUser)
+        btnToParent.visible = false
+        enableCommentsCheckBox.visible = true
+    }
+
     SplitView {
         id: splitView
         orientation: Qt.Horizontal
@@ -254,10 +262,7 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             acceptedButtons: Qt.LeftButton
-                            onClicked: {
-                                currentAddress = address
-                                currentWallet.messageListModel.setCurrent(address, isMultiUser)
-                            }
+                            onClicked: pageChat.setCurrent(address, isMultiUser)
                         }
                     }
                     ScrollBar.vertical: ScrollBar {}
@@ -353,8 +358,8 @@ Rectangle {
                             visible: isMultiUser && !sendByMe
                             id: "avatar2"
                             radius: 14
-                            y:10
-                            x:6
+                            y: 10
+                            x: isTitle ? (messageListRow.width - textItemWidth)/2 - 34 : 6
                             width: 28
                             height: 28
                             color: AbBackground
