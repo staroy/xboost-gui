@@ -73,7 +73,7 @@ QVariant SubaddressModel::data(const QModelIndex &index, int role) const
     });
     if (!found)
     {
-        qCritical("%s: internal error: invalid index %d", __FUNCTION__, index.row());
+        qCritical("SubaddressModel::%s: internal error: invalid index %d", __FUNCTION__, index.row());
     }
 
     return result;

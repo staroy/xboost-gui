@@ -58,10 +58,19 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
     QVariant result; auto messageList = m_messageList;
 
     if(role == AddressBookIsMultiUserRole)
-    {
-        result = m_addressBook->isMultiUser(index.row());
-        return result;
-    }
+        return  m_addressBook->isMultiUser(index.row());
+
+    if(role == AddressBookTagsRole)
+        return m_addressBook->getTags(index.row());
+
+    if(role == AddressBookIsDeletedRole)
+        return m_addressBook->isDeletedRow(index.row());
+
+    if(role == AddressBookIsBlockedRole)
+        return m_addressBook->isBlockedRow(index.row());
+
+    if(role == AddressBookIsAnonRole)
+        return m_addressBook->isAnonRow(index.row());
 
     bool found = m_addressBook->getRow(index.row(), [&messageList, &result, &role, &index](const Monero::AddressBookRow &row) {
         switch (role) {
@@ -70,6 +79,9 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
             break;
         case AddressBookDescriptionRole:
             result = QString::fromStdString(row.getDescription());
+            break;
+        case AddressBookMyDescriptionRole:
+            result = QString::fromStdString(row.getMyDescription());
             break;
         case AddressBookPaymentIdRole:
             result = QString::fromStdString(row.getPaymentId());
@@ -91,23 +103,23 @@ QVariant UnsortedAddressBookModel::data(const QModelIndex &index, int role) cons
                 result = QDateTime().fromSecsSinceEpoch(quint64(messageList->getLastTime(row.getAddress().c_str()))).toString("dd.MM.yyyy hh:mm");
             break;
         case AddressBookAB:
-            result = QString::fromStdString(row.getAb());
+            result = QString::fromStdString(row.getShortName());
+            break;
+        case AddressBookMyAB:
+            result = QString::fromStdString(row.getMyShortName());
             break;
         case AddressBookABColor:
-            result = QString::fromStdString(row.getAbColor());
+            result = QString::fromStdString(row.getShortNameColor());
             break;
         case AddressBookABBackground:
-            result = QString::fromStdString(row.getAbBackground());
-            break;
-        case AddressBookUnsortedId:
-            result = int(index.row());
+            result = QString::fromStdString(row.getShortNameBackground());
             break;
         default:
             qCritical() << "Unimplemented role " << role;
         }
     });
     if (!found) {
-        qCritical("%s: internal error: invalid index %d", __FUNCTION__, index.row());
+        qCritical("UnsortedAddressBookModel::%s: internal error: invalid index %d", __FUNCTION__, index.row());
     }
 
     return result;
@@ -118,6 +130,11 @@ bool UnsortedAddressBookModel::deleteRow(int row)
     return m_addressBook->deleteRow(row);
 }
 
+bool UnsortedAddressBookModel::undeleteRow(int row)
+{
+    return m_addressBook->undeleteRow(row);
+}
+
 QHash<int, QByteArray> UnsortedAddressBookModel::roleNames() const
 {
     QHash<int, QByteArray> roleNames = QAbstractListModel::roleNames();
@@ -125,6 +142,9 @@ QHash<int, QByteArray> UnsortedAddressBookModel::roleNames() const
     roleNames.insert(AddressBookPaymentIdRole, "paymentId");
     roleNames.insert(AddressBookDescriptionRole, "description");
     roleNames.insert(AddressBookIsMultiUserRole, "isMultiUser");
+    roleNames.insert(AddressBookIsDeletedRole, "isDeleted");
+    roleNames.insert(AddressBookIsBlockedRole, "isBlocked");
+    roleNames.insert(AddressBookIsAnonRole, "isAnon");
     roleNames.insert(AddressBookRowIdRole, "rowId");
     roleNames.insert(AddressBookUnreadCountRole, "unreadCount");
     roleNames.insert(AddressBookLastTimeRole, "lastTimeSecs");
@@ -132,35 +152,41 @@ QHash<int, QByteArray> UnsortedAddressBookModel::roleNames() const
     roleNames.insert(AddressBookAB, "Ab");
     roleNames.insert(AddressBookABColor, "AbColor");
     roleNames.insert(AddressBookABBackground, "AbBackground");
-    roleNames.insert(AddressBookUnsortedId, "unsortedId");
+    roleNames.insert(AddressBookTagsRole, "tags");
+    roleNames.insert(AddressBookMyDescriptionRole, "myDescription");
+    roleNames.insert(AddressBookMyAB, "myAb");
     return roleNames;
 }
 
 AddressBookModel::AddressBookModel(QObject *parent, AddressBook *addressBook, MessageList *messageList, bool is_chat)
   : QSortFilterProxyModel(parent)
-  , src_(parent, addressBook, messageList)
+  , src_(parent, addressBook, messageList), is_chat_(is_chat)
 {
   setSourceModel(&src_);
-  if(is_chat)
+
+  if(is_chat_)
+  {
     setSortRole(UnsortedAddressBookModel::AddressBookLastTimeRole);
-  else
-    setSortRole(UnsortedAddressBookModel::AddressBookDescriptionRole);
-  setFilterRole(UnsortedAddressBookModel::AddressBookDescriptionRole);
-  if(is_chat)
     setSortOrder(true);
+  }
   else
+  {
+    setSortRole(UnsortedAddressBookModel::AddressBookDescriptionRole);
     setSortOrder(false);
+  }
+
+  //setFilterRole(UnsortedAddressBookModel::AddressBookDescriptionRole);
 }
 
 AddressBookModel::~AddressBookModel()
 {
 }
 
-void AddressBookModel::setFilterString(const QString& string)
+void AddressBookModel::setFilterString(const QString& str)
 {
+  filter_ = str;
   this->setFilterCaseSensitivity(Qt::CaseInsensitive);
-  this->setFilterFixedString(string);
-  filter_ = string;
+  this->setFilterFixedString(filter_);
 }
 
 QString AddressBookModel::getFilterString()
@@ -185,7 +211,45 @@ bool AddressBookModel::deleteRow(int row)
     return src_.deleteRow(row);
 }
 
+bool AddressBookModel::undeleteRow(int row)
+{
+    return src_.undeleteRow(row);
+}
+
 void AddressBookModel::invalidate()
 {
     QSortFilterProxyModel::invalidate();
+}
+
+bool AddressBookModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
+{
+    QAbstractItemModel *model = sourceModel();
+    QModelIndex sourceIndex = model->index(sourceRow, 0, sourceParent);
+
+    if (!sourceIndex.isValid())
+        return true;
+
+    QRegExp rx = filterRegExp();
+    if (!rx.isEmpty())
+    {
+        QString key = model->data(sourceIndex, UnsortedAddressBookModel::AddressBookDescriptionRole).toString();
+        if(!key.contains(rx))
+            return false;
+    }
+
+    if(!is_chat_)
+        return true;
+
+    QString tags = model->data(sourceIndex, UnsortedAddressBookModel::AddressBookTagsRole).toString();
+
+    if(tags.contains(Monero::TAG_DEL))
+        return false;
+
+    if(tags.contains(Monero::TAG_BLOCK))
+        return false;
+
+    if(tags.contains(Monero::TAG_ANON))
+        return false;
+
+    return true;
 }

@@ -26,10 +26,12 @@ public:
         MessageTxidRole,
         MessageSendByMeRole,
         MessageIsMultiUserRole,
-        MessageIsTitleRole,
         MessageABRole,
         MessageABColorRole,
-        MessageABBackgroundRole
+        MessageABBackgroundRole,
+        MessageTagsRole,
+        MessageIsDeletedRole,
+        MessageIsTitleRole
     };
     //Q_ENUM(MessageRole)
 
@@ -37,8 +39,8 @@ public:
 
     Q_INVOKABLE int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     Q_INVOKABLE QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    Q_INVOKABLE void append(const QString& message, bool enable_comments, quint64 amount, bool unprunable);
-    Q_INVOKABLE void setCurrent(const QString& address, bool isMultiUser = false);
+    Q_INVOKABLE void append(const QString& message, bool enable_comments, bool is_anon, quint64 amount, bool unprunable);
+    Q_INVOKABLE void setCurrent(const QString& address, bool isMultiUser = false, const QString& myDescription = QString(), const QString& myAb = QString());
     Q_INVOKABLE bool isSubChat() const;
     Q_INVOKABLE void setSubChat(const QString& txid);
     Q_INVOKABLE void setToParent();
@@ -59,6 +61,8 @@ protected:
     bool m_isMultiUser;
     QString m_selfAddress;
     QString m_currentSubChat;
+    QString m_myDescription;
+    QString m_myAb;
 };
 
 class MessageListModel : public QSortFilterProxyModel
@@ -66,6 +70,7 @@ class MessageListModel : public QSortFilterProxyModel
   Q_OBJECT
 
   UnsortedMessageListModel src_;
+  bool view_deleted_;
 
 public:
   Q_ENUM(UnsortedMessageListModel::MessageRole)
@@ -75,9 +80,14 @@ public:
 
   Q_INVOKABLE void setFilterString(QString string);
   Q_INVOKABLE void setSortOrder(bool checked);
+  Q_INVOKABLE void setViewDeleted(bool f);
+  Q_INVOKABLE bool getViewDeleted();
 
-  Q_INVOKABLE void append(const QString& text, bool enable_comments, quint64 amount, bool unprunable);
-  Q_INVOKABLE void setCurrent(const QString& Address, bool isMultiUser = false);
+  Q_INVOKABLE void append(const QString& text, bool enable_comments, bool is_anon, quint64 amount, bool unprunable);
+  Q_INVOKABLE void del(quint64 index);
+  Q_INVOKABLE void undel(quint64 index);
+
+  Q_INVOKABLE void setCurrent(const QString& Address, bool isMultiUser = false, const QString& myDescription = QString(), const QString& myAb = QString());
   Q_INVOKABLE void setSubChat(const QString& txid);
   Q_INVOKABLE bool isSubChat();
   Q_INVOKABLE void setToParent();
@@ -85,11 +95,14 @@ public:
   UnsortedMessageListModel& source();
 
 public slots:
-    void msgReceived(const QString &chat, quint64 n, const QString &txid);
-    void msgRemoved(const QString &chat, quint64 n, const QString &txid);
+  void msgReceived(const QString &chat, quint64 n, const QString &txid);
+  void msgRemoved(const QString &chat, quint64 n, const QString &txid);
 
 signals:
   void addressBookInvalidate();
+
+protected:
+  bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 };
 
 #endif // MESSAGEMODEL_H

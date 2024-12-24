@@ -48,8 +48,20 @@ Rectangle {
     property bool selectAndSend: false
     property bool selectAndAtomicSwap: false
     property bool editEntry: false
+    property bool isAnon: false
+    readonly property string dimmed2Color: MoneroComponents.Style.blackTheme ? "#777777" : "#999999"
 
     Clipboard { id: clipboard }
+
+    function set_rectangleAbBackground(color) {
+        rectangleAbBackground.color = color
+        rectangleAbText.color = currentWallet.addressBook.getShortNameTextColor(color)
+    }
+
+    function set_rectangleNmuAbBackground(color) {
+        rectangleNmuAbBackground.color = color
+        rectangleNmuAbText.color = currentWallet.addressBook.getShortNameTextColor(color)
+    }
 
     ColumnLayout {
         id: mainLayout
@@ -204,6 +216,7 @@ Rectangle {
                                 targetObj: parent
                                 blackColor: MoneroComponents.Style._b_appWindowBorderColor
                                 whiteColor: MoneroComponents.Style._w_appWindowBorderColor
+                                themeTransition: false
                             }
                         }
 
@@ -214,11 +227,47 @@ Rectangle {
                             color: "transparent"
 
                             MoneroComponents.Label {
-                                id: descriptionLabel
+                                id: deletedLabel
                                 color: MoneroComponents.Style.defaultFontColor
                                 anchors.verticalCenter: parent.verticalCenter
                                 anchors.left: parent.left
                                 anchors.leftMargin: 6
+                                fontSize: 16
+                                text: isDeleted ? "*" : ""
+                                elide: Text.ElideRight
+                                textWidth: 10
+                            }
+
+                            MoneroComponents.Label {
+                                id: blockedLabel
+                                color: MoneroComponents.Style.defaultFontColor
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.leftMargin: 16
+                                fontSize: 16
+                                text: isBlocked ? "B" : ""
+                                elide: Text.ElideRight
+                                textWidth: 10
+                            }
+
+                            MoneroComponents.Label {
+                                id: anonLabel
+                                color: MoneroComponents.Style.defaultFontColor
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.leftMargin: 26
+                                fontSize: 16
+                                text: isAnon ? "A" : ""
+                                elide: Text.ElideRight
+                                textWidth: 10
+                            }
+
+                            MoneroComponents.Label {
+                                id: descriptionLabel
+                                color: MoneroComponents.Style.defaultFontColor
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.leftMargin: 46
                                 fontSize: 16
                                 text: description
                                 elide: Text.ElideRight
@@ -227,7 +276,7 @@ Rectangle {
 
                             MoneroComponents.Label {
                                 id: addressLabel
-                                color: MoneroComponents.Style.defaultFontColor
+                                color:  MoneroComponents.Style.defaultFontColor
                                 anchors.verticalCenter: parent.verticalCenter
                                 anchors.left: parent.right
                                 anchors.leftMargin: -addressLabel.width - 5
@@ -299,8 +348,8 @@ Rectangle {
 
                                 onClicked: {
                                     addressBookListView.currentIndex = index;
-                                    addressBookListView.unsortedCurrentIndex = unsortedId;
-                                    root.showEditAddress(address, description);
+                                    addressBookListView.unsortedCurrentIndex = rowId;
+                                    root.showEditAddress(address, description, Ab, AbColor, AbBackground, isAnon);
                                 }
                             }
 
@@ -353,7 +402,7 @@ Rectangle {
 
             MoneroComponents.LineEditMulti {
                 id: addressLine
-                visible: !root.editEntry
+                visible: !root.editEntry || root.isAnon
                 Layout.topMargin: 20
                 KeyNavigation.backtab: deleteButton.visible ? deleteButton: cancelButton
                 KeyNavigation.tab: resolveButton.visible ? resolveButton : descriptionLine
@@ -376,6 +425,7 @@ Rectangle {
                     if (!parsed.error) {
                         addressLine.text = parsed.address;
                         descriptionLine.text = parsed.tx_description;
+                        multi_user = parsed.has_view_skey;
                     }
                 }
                 onEnterPressed: addButton.enabled ? addButton.clicked() : ""
@@ -440,19 +490,155 @@ Rectangle {
                 }
             }
 
-            MoneroComponents.LineEdit {
-                id: descriptionLine
-                KeyNavigation.backtab: resolveButton.visible ? resolveButton : addressLine
-                KeyNavigation.tab: addButton.enabled ? addButton : cancelButton
-                Layout.topMargin: 20
-                Layout.fillWidth: true
-                fontSize: 16
-                placeholderFontSize: 16
-                labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style> %1"
-                    .arg(qsTr("Description")) + translationManager.emptyString
-                placeholderText: qsTr("Add a name...") + translationManager.emptyString
-                onAccepted: addButton.enabled ? addButton.clicked() : ""
+            ColorDialog {
+                id: dialogAbBackground
+                onAccepted: root.set_rectangleAbBackground(currentColor)
             }
+
+            ColorDialog {
+                id: dialogNmuAbBackground
+                onAccepted: root.set_rectangleNmuAbBackground(currentColor)
+            }
+
+            GridLayout {
+                columns: 4
+                rows: 3
+                rowSpacing: 20
+                columnSpacing: 15
+
+                Layout.fillWidth: true
+                Layout.topMargin: 20
+
+                ColumnLayout {
+                    MoneroComponents.Label {
+                        id: descriptionLabel
+                        color: MoneroComponents.Style.defaultFontColor
+                        text: qsTr("Description") + translationManager.emptyString
+                        fontSize: 16
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.columnSpan: 3
+                    MoneroComponents.LineEdit {
+                        id: descriptionLine
+                        KeyNavigation.backtab: resolveButton.visible ? resolveButton : addressLine
+                        KeyNavigation.tab: addButton.enabled ? addButton : cancelButton
+                        fontSize: 16
+                        placeholderFontSize: 16
+                        placeholderText: qsTr("Add a name...") + translationManager.emptyString
+                        onAccepted: addButton.enabled ? addButton.clicked() : ""
+                    }
+                }
+
+                ColumnLayout {
+                    MoneroComponents.Label {
+                        id: shortAbLabel
+                        color: MoneroComponents.Style.defaultFontColor
+                        text: qsTr("Short") + translationManager.emptyString
+                        fontSize: 16
+                    }
+                }
+
+                ColumnLayout {
+                    MoneroComponents.LineEdit {
+                        id: shortAbLine
+                        fontSize: 16
+                        placeholderFontSize: 16
+                        placeholderText: qsTr("Short ...") + translationManager.emptyString
+                        onTextChanged: rectangleAbText.text = text
+                    }
+                }
+
+                ColumnLayout {
+                    Rectangle {
+                        id: rectangleAbBackground
+                        radius: 14
+                        width: 28
+                        height: 28
+                        Label {
+                            id: rectangleAbText
+                            anchors.centerIn: parent
+                            font.pixelSize: 13
+                        }
+                    }
+
+                }
+                
+                ColumnLayout {
+                    MoneroComponents.StandardButton {
+                        id: changeBackgrownd
+                        small: true
+                        text: qsTr("Short background") + translationManager.emptyString
+                        primary: false
+                        onClicked: dialogAbBackground.open();
+                    }
+                }
+
+                ColumnLayout {
+                    MoneroComponents.Label {
+                        id: myDescriptionLabel
+                        color: MoneroComponents.Style.defaultFontColor
+                        text: qsTr("My description") + translationManager.emptyString
+                        fontSize: 16
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.columnSpan: 3
+                    MoneroComponents.LineEdit {
+                        id: myDescriptionLine
+                        KeyNavigation.backtab: resolveButton.visible ? resolveButton : addressLine
+                        KeyNavigation.tab: addButton.enabled ? addButton : cancelButton
+                        fontSize: 16
+                        placeholderFontSize: 16
+                        placeholderText: qsTr("Add my name...") + translationManager.emptyString
+                        onAccepted: addButton.enabled ? addButton.clicked() : ""
+                    }
+                }
+
+                ColumnLayout {
+                    MoneroComponents.Label {
+                        id: myShortAbLabel
+                        color: MoneroComponents.Style.defaultFontColor
+                        text: qsTr("My short") + translationManager.emptyString
+                        fontSize: 16
+                    }
+                }
+
+                ColumnLayout {
+                    MoneroComponents.LineEdit {
+                        id: myShortAbLine
+                        fontSize: 16
+                        placeholderFontSize: 16
+                        placeholderText: qsTr("My short ...") + translationManager.emptyString
+                    }
+                }
+            }
+            RowLayout {
+                Layout.topMargin: 25
+                Layout.alignment: Qt.AlignLeft
+
+                MoneroComponents.CheckBox {
+                    id: addressBookBlockCheckBox
+                    visible: root.editEntry
+                    checked: false
+                    enabled: false
+                    onClicked: {}
+                    text: qsTr("Blocked") + translationManager.emptyString
+                }
+
+                MoneroComponents.CheckBox {
+                    id: addressBookDeleteCheckBox
+                    Layout.leftMargin: 10
+                    visible: root.editEntry
+                    checked: false
+                    enabled: false
+                    onClicked: {}
+                    text: qsTr("Deleted") + translationManager.emptyString
+                }
+            }
+
             RowLayout {
                 Layout.topMargin: 20
                 Layout.alignment: Qt.AlignRight
@@ -468,21 +654,46 @@ Rectangle {
                 }
 
                 MoneroComponents.StandardButton {
+                    id: blockButton
+                    Layout.leftMargin: 5
+                    KeyNavigation.backtab: cancelButton
+                    KeyNavigation.tab: deleteButton
+                    small: true
+                    visible: root.editEntry
+                    text: qsTr(addressBookBlockCheckBox.checked ? "Unblock" : "Block") + translationManager.emptyString
+                    primary: false
+                    onClicked: {
+                        if(addressBookBlockCheckBox.checked) {
+                          currentWallet.addressBook.unblockRow(addressBookListView.unsortedCurrentIndex);
+                        } else {
+                          currentWallet.addressBook.blockRow(addressBookListView.unsortedCurrentIndex);
+                        }
+                        root.showAddressBook();
+                    }
+                }
+
+                MoneroComponents.StandardButton {
                     id: deleteButton
+                    Layout.leftMargin: 5
                     KeyNavigation.backtab: cancelButton
                     KeyNavigation.tab: addressLine
                     small: true
                     visible: root.editEntry
-                    text: qsTr("Delete") + translationManager.emptyString
+                    text: qsTr(addressBookDeleteCheckBox.checked ? "Undelete" : "Delete") + translationManager.emptyString
                     primary: false
                     onClicked: {
-                        currentWallet.addressBook.deleteRow(addressBookListView.unsortedCurrentIndex);
+                        if(addressBookDeleteCheckBox.checked) {
+                          currentWallet.addressBook.undeleteRow(addressBookListView.unsortedCurrentIndex);
+                        } else {
+                          currentWallet.addressBook.deleteRow(addressBookListView.unsortedCurrentIndex);
+                        }
                         root.showAddressBook();
                     }
                 }
 
                 MoneroComponents.StandardButton {
                     id: addButton
+                    Layout.leftMargin: 5
                     KeyNavigation.backtab: descriptionLine
                     KeyNavigation.tab: cancelButton
                     small: true
@@ -490,9 +701,8 @@ Rectangle {
                     enabled: root.checkInformation(addressLine.text, appWindow.persistentSettings.nettype)
                     onClicked: {
                         if (!root.editEntry) {
-                            if (currentWallet.addressBook.addRow(addressLine.text.trim(),"", descriptionLine.text)) {
-                                console.log("Entry added")
-                            } else {
+                            var idx = currentWallet.addressBook.addRow(addressLine.text.trim(),"", descriptionLine.text, shortAbLine.text, rectangleAbBackground.color, myDescriptionLine.text, myShortAbLine.text);
+                            if (idx < 0) {
                                 informationPopup.title = qsTr("Error") + translationManager.emptyString;
                                 // TODO: check currentWallet.addressBook.errorString() instead.
                                 if (currentWallet.addressBook.errorCode() === AddressBook.Invalid_Address)
@@ -506,7 +716,7 @@ Rectangle {
                                 informationPopup.open();
                             }
                         } else {
-                            currentWallet.addressBook.setDescription(addressBookListView.unsortedCurrentIndex, descriptionLine.text);
+                            currentWallet.addressBook.setFields(addressBookListView.unsortedCurrentIndex, root.isAnon ? addressLine.text : "", descriptionLine.text, shortAbLine.text, rectangleAbBackground.color);
                             console.log("Description edited")
                         }
                         root.showAddressBook()
@@ -537,6 +747,42 @@ Rectangle {
                 placeholderText: qsTr("Add a name...") + translationManager.emptyString
                 onAccepted: addNmuButton.enabled ? addNmuButton.clicked() : ""
             }
+
+            ColumnLayout {
+                MoneroComponents.LineEdit {
+                    id: shortNmuAbLine
+                    fontSize: 16
+                    placeholderFontSize: 16
+                    placeholderText: qsTr("Short ...") + translationManager.emptyString
+                    onTextChanged: rectangleNmuAbText.text = text
+                }
+            }
+
+            ColumnLayout {
+                Rectangle {
+                    id: rectangleNmuAbBackground
+                    radius: 14
+                    width: 28
+                    height: 28
+                    Label {
+                        id: rectangleNmuAbText
+                        anchors.centerIn: parent
+                        font.pixelSize: 13
+                    }
+                }
+
+            }
+            
+            ColumnLayout {
+                MoneroComponents.StandardButton {
+                    id: changeNmuBackgrownd
+                    small: true
+                    text: qsTr("Short background") + translationManager.emptyString
+                    primary: false
+                    onClicked: dialogNmuAbBackground.open();
+                }
+            }
+
             RowLayout {
                 Layout.topMargin: 20
                 Layout.alignment: Qt.AlignRight
@@ -571,7 +817,8 @@ Rectangle {
                     text: qsTr("New") + translationManager.emptyString
                     enabled: descriptionNmuLine.text.length > 0
                     onClicked: {
-                        if (currentWallet.addressBook.newMultiUserRow(descriptionNmuLine.text)) {
+                        var idx = currentWallet.addressBook.newMultiUserRow(descriptionNmuLine.text, shortNmuAbLine.text, rectangleNmuAbBackground.color);
+                        if (idx >= 0) {
                             console.log("Multi user entry created")
                         } else {
                             informationPopup.title = qsTr("Error") + translationManager.emptyString;
@@ -598,9 +845,15 @@ Rectangle {
     function clearFields() {
         addressLine.text = "";
         descriptionLine.text = "";
+        shortAbLine.text = "";
+        rectangleAbBackground.color = currentWallet.addressBook.getShortNameBackgroundColorRandomize();
+        rectangleAbText.color = currentWallet.addressBook.getShortNameTextColor(rectangleAbBackground.color);
+        rectangleAbText.text = "";
+        dialogAbBackground.color = rectangleAbBackground.color;
     }
 
     function showAddressBook() {
+        root.editEntry = false;
         addressBookEmptyLayout.visible = addressBookListView.count == 0
         addressBookLayout.visible = addressBookListView.count >= 1;
         addContactLayout.visible = false;
@@ -626,14 +879,22 @@ Rectangle {
         addressLine.forceActiveFocus();
     }
 
-    function showEditAddress(address, description) {
+    function showEditAddress(address, description, Ab, AbColor, AbBackground, isAnon) {
         //TODO: real contact editing, requires API change
         root.editEntry = true;
+        root.isAnon = isAnon;
         addressBookEmptyLayout.visible = false
         addressBookLayout.visible = false;
         addContactLayout.visible = true;
+        addressBookDeleteCheckBox.checked = currentWallet.addressBook.isDeletedRow(addressBookListView.unsortedCurrentIndex)
+        addressBookBlockCheckBox.checked = currentWallet.addressBook.isBlockedRow(addressBookListView.unsortedCurrentIndex)
         addressLine.text = address;
         descriptionLine.text = description;
+        shortAbLine.text = Ab;
+        rectangleAbBackground.color = AbBackground
+        rectangleAbText.color = AbColor
+        rectangleAbText.text = Ab
+        dialogAbBackground.color = AbBackground
         addressLine.forceActiveFocus();
         addressLine.cursorPosition = addressLine.text.length;
     }
@@ -664,10 +925,15 @@ Rectangle {
             }
         }
     }
+
     function onPageCompleted() {
         console.log("adress book");
         addressBookListView.model = currentWallet.addressBookModel;
         showAddressBook();
+    }
+
+    function onPageOpened() {
+        currentWallet.addressBookModel.invalidate();
     }
 
     function onPageClosed() {

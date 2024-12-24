@@ -420,17 +420,26 @@ QString WalletManager::resolveOpenAlias(const QString &address) const
     res = std::string(dnssec_valid ? "true" : "false") + "|" + res;
     return QString::fromStdString(res);
 }
-bool WalletManager::parse_uri(const QString &uri, QString &address, QString &payment_id, uint64_t &amount, QString &tx_description, QString &recipient_name, QVector<QString> &unknown_parameters, QString &error) const
+bool WalletManager::parse_uri(const QString &uri, QString &address, bool& has_view_skey, QString &payment_id, uint64_t &amount, QString &tx_description, QString &recipient_name, QVector<QString> &unknown_parameters, QString &error) const
 {
     QMutexLocker locker(&m_mutex);
     if (m_currentWallet)
-        return m_currentWallet->parse_uri(uri, address, payment_id, amount, tx_description, recipient_name, unknown_parameters, error);
+        return m_currentWallet->parse_uri(uri, address, has_view_skey, payment_id, amount, tx_description, recipient_name, unknown_parameters, error);
+    return false;
+}
+
+bool WalletManager::isMultiUserAddress(const QString &address) const
+{
+    QMutexLocker locker(&m_mutex);
+    if (m_currentWallet)
+        return m_currentWallet->isMultiUserAddress(address);
     return false;
 }
 
 QVariantMap WalletManager::parse_uri_to_object(const QString &uri) const
 {
     QString address;
+    bool has_view_skey = false;
     QString payment_id;
     uint64_t amount = 0;
     QString tx_description;
@@ -439,8 +448,9 @@ QVariantMap WalletManager::parse_uri_to_object(const QString &uri) const
     QString error;
 
     QVariantMap result;
-    if (this->parse_uri(uri, address, payment_id, amount, tx_description, recipient_name, unknown_parameters, error)) {
+    if (this->parse_uri(uri, address, has_view_skey, payment_id, amount, tx_description, recipient_name, unknown_parameters, error)) {
         result.insert("address", address);
+        result.insert("has_view_skey", has_view_skey);
         result.insert("payment_id", payment_id);
         result.insert("amount", amount > 0 ? displayAmount(amount) : "");
         result.insert("tx_description", tx_description);

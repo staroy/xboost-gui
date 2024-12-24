@@ -962,6 +962,7 @@ MessageListModel *Wallet::messageListModel()
         std::string address = m_walletImpl->address(0, 0);
         m_messageListModel->source().setSelf(address.c_str());
         QObject::connect(m_messageListModel, &MessageListModel::addressBookInvalidate, chatAddressModel(), &AddressBookModel::invalidate);
+        QObject::connect(m_messageListModel, &MessageListModel::addressBookInvalidate, addressBookModel(), &AddressBookModel::invalidate);
         QObject::connect(this, &Wallet::msgReceived, m_messageListModel, &MessageListModel::msgReceived);
         QObject::connect(this, &Wallet::msgRemoved, m_messageListModel, &MessageListModel::msgRemoved);
     }
@@ -1186,11 +1187,11 @@ bool Wallet::verifySignedMessage(const QString &message, const QString &address,
     return m_walletImpl->verifySignedMessage(message.toStdString(), address.toStdString(), signature.toStdString());
   }
 }
-bool Wallet::parse_uri(const QString &uri, QString &address, QString &payment_id, uint64_t &amount, QString &tx_description, QString &recipient_name, QVector<QString> &unknown_parameters, QString &error)
+bool Wallet::parse_uri(const QString &uri, QString &address, bool& has_view_skey, QString &payment_id, uint64_t &amount, QString &tx_description, QString &recipient_name, QVector<QString> &unknown_parameters, QString &error)
 {
    std::string s_address, s_payment_id, s_tx_description, s_recipient_name, s_error;
    std::vector<std::string> s_unknown_parameters;
-   bool res= m_walletImpl->parse_uri(uri.toStdString(), s_address, s_payment_id, amount, s_tx_description, s_recipient_name, s_unknown_parameters, s_error);
+   bool res= m_walletImpl->parse_uri(uri.toStdString(), s_address, has_view_skey, s_payment_id, amount, s_tx_description, s_recipient_name, s_unknown_parameters, s_error);
    if(res)
    {
        address = QString::fromStdString(s_address);
@@ -1208,6 +1209,11 @@ QString Wallet::make_uri(const QString &address, const quint64 &amount, const QS
 {
     std::string error;
     return QString::fromStdString(m_walletImpl->make_uri(address.toStdString(), "", amount, tx_description.toStdString(), recipient_name.toStdString(), error));
+}
+
+bool Wallet::isMultiUserAddress(const QString &address) const
+{
+    return m_walletImpl->isMultiUserAddress(address.toStdString());
 }
 
 bool Wallet::rescanSpent()

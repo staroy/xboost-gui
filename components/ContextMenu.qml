@@ -33,7 +33,7 @@ MouseArea {
         }
 
         padding: 1
-        width: 110
+        width: 140
         x: root.mouseX
         y: root.mouseY
 

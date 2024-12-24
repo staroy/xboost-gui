@@ -29,6 +29,9 @@
 #include "AddressBook.h"
 #include <QDebug>
 
+#include "string_tools.h"
+#include "hex.h"
+
 AddressBook::AddressBook(Monero::AddressBook *abImpl,QObject *parent)
   : QObject(parent), m_addressBookImpl(abImpl)
 {
@@ -44,18 +47,27 @@ int AddressBook::errorCode() const
     return m_addressBookImpl->errorCode();
 }
 
-bool AddressBook::newMultiUserRow(const QString &description) const
+int AddressBook::newMultiUserRow(const QString &description, const QString &ab, const QString &bg) const
 {
+    size_t index;
+
     bool result;
     emit refreshStarted();
 
     {
         QReadLocker locker(&m_lock);
-        result = m_addressBookImpl->newMultiUserRow(description.toStdString(), [](Monero::AddressBookRow& row, std::size_t rowId){});
+        result = m_addressBookImpl->newMultiUserRow(description.toStdString(), ab.toStdString(), bg.toStdString(), [&index](Monero::AddressBookRow& row, std::size_t rowId)
+        {
+            index = rowId;
+        });
     }
 
     emit refreshFinished();
-    return result;
+
+    if(!result)
+      return -1;
+
+    return index;
 }
 
 bool AddressBook::getRow(int index, std::function<void (Monero::AddressBookRow &)> callback) const
@@ -70,24 +82,35 @@ bool AddressBook::getRow(int index, std::function<void (Monero::AddressBookRow &
     return m_addressBookImpl->getRow(index, callback);
 }
 
-bool AddressBook::addRow(const QString &address, const QString &payment_id, const QString &description)
+int AddressBook::addRow(const QString &address, const QString &payment_id, const QString &description, const QString &ab, const QString &bg, const QString &my_description, const QString &my_ab)
 {
+    size_t rowId;
+
     bool result;
     emit refreshStarted();
 
     {
-        size_t rowId;
         QWriteLocker locker(&m_lock);
         result = m_addressBookImpl->addRow({
             address.toStdString(),
             payment_id.toStdString(),
             description.toStdString(),
-            "", "", ""
+            ab.toStdString(),
+            getShortNameTextColor(bg).toStdString(),
+            bg.toStdString(),
+            false,
+            false,
+            my_description.toStdString(),
+            my_ab.toStdString()
         }, rowId);
     }
 
     emit refreshFinished();
-    return result;
+
+    if(!result)
+      return -1;
+
+    return rowId;
 }
 
 bool AddressBook::deleteRow(int rowId)
@@ -102,6 +125,99 @@ bool AddressBook::deleteRow(int rowId)
 
     emit refreshFinished();
     return result;
+}
+
+bool AddressBook::undeleteRow(int rowId)
+{
+    bool result;
+    emit refreshStarted();
+
+    {
+        QWriteLocker locker(&m_lock);
+        result = m_addressBookImpl->undeleteRow(rowId);
+    }
+
+    emit refreshFinished();
+    return result;
+}
+
+bool AddressBook::blockRow(int rowId)
+{
+    bool result;
+    emit refreshStarted();
+
+    {
+        QWriteLocker locker(&m_lock);
+        result = m_addressBookImpl->blockRow(rowId);
+    }
+
+    emit refreshFinished();
+    return result;
+}
+
+bool AddressBook::unblockRow(int rowId)
+{
+    bool result;
+    emit refreshStarted();
+
+    {
+        QWriteLocker locker(&m_lock);
+        result = m_addressBookImpl->unblockRow(rowId);
+    }
+
+    emit refreshFinished();
+    return result;
+}
+
+bool AddressBook::isDeletedRow(int rowId)
+{
+    return m_addressBookImpl->isTaged(rowId, Monero::TAG_DEL);
+}
+
+bool AddressBook::isBlockedRow(int rowId)
+{
+    return m_addressBookImpl->isTaged(rowId, Monero::TAG_BLOCK);
+}
+
+bool AddressBook::isAnonRow(int rowId)
+{
+    return m_addressBookImpl->isTaged(rowId, Monero::TAG_ANON);
+}
+
+void AddressBook::setTags(int index, const QString& tags)
+{
+    QReadLocker locker(&m_lock);
+    m_addressBookImpl->setTags(index, tags.toStdString());
+}
+
+QString AddressBook::getTags(int index) const
+{
+    QReadLocker locker(&m_lock);
+    std::string val;
+    if(!m_addressBookImpl->getTags(index, val))
+        return QString();
+    return QString::fromStdString(val);
+}
+
+void AddressBook::addAttr(int index, const QString& name, const QString& val)
+{
+    QReadLocker locker(&m_lock);
+    m_addressBookImpl->addAttr(index, name.toStdString(), val.toStdString());
+}
+
+QString AddressBook::getAttr(int index, const QString& name) const
+{
+    QReadLocker locker(&m_lock);
+    std::string out;
+    if(!m_addressBookImpl->getAttr(index, name.toStdString(), out))
+        return QString();
+    return QString::fromStdString(out);
+}
+
+bool AddressBook::delAttr(int index, const QString& name)
+{
+    QReadLocker locker(&m_lock);
+    return m_addressBookImpl->delAttr(index, name.toStdString());
 }
 
 quint64 AddressBook::count() const
@@ -141,9 +257,36 @@ void AddressBook::setDescription(int index, const QString &description)
     emit refreshFinished();
 }
 
+void AddressBook::setFields(int index, const QString &address, const QString &description, const QString &shortAb, const QString &backgroundAb)
+{
+    emit refreshStarted();
+
+    {
+        QWriteLocker locker(&m_lock);
+        m_addressBookImpl->setFields(index, address.toStdString(), description.toStdString(), shortAb.toStdString(), backgroundAb.toStdString());
+    }
+
+    emit refreshFinished();
+}
+
+QString AddressBook::getShortNameTextColor(const QString& color)
+{
+    uint8_t c[3];
+    if(epee::from_hex::to_buffer(c, color.toStdString().substr(1)) && 0.3*c[0]+0.59*c[1]+0.11*c[2] > 128.0)
+      return "#303030";
+    return "#f0f0f0";
+}
+
+QString AddressBook::getShortNameBackgroundColorRandomize()
+{
+    std::string bc;
+    m_addressBookImpl->getShortNameBackgroundColorRandomize(bc);
+    return QString::fromStdString(bc);
+}
+
 bool AddressBook::isMultiUser(int index)
 {
     QWriteLocker locker(&m_lock);
-
     return m_addressBookImpl->isMultiUser(index);
 }
+

@@ -45,6 +45,9 @@ public:
         AddressBookAddressRole,
         AddressBookDescriptionRole,
         AddressBookIsMultiUserRole,
+        AddressBookIsDeletedRole,
+        AddressBookIsBlockedRole,
+        AddressBookIsAnonRole,
         AddressBookPaymentIdRole,
         AddressBookRowIdRole,
         AddressBookUnreadCountRole,
@@ -53,7 +56,9 @@ public:
         AddressBookAB,
         AddressBookABColor,
         AddressBookABBackground,
-        AddressBookUnsortedId
+        AddressBookTagsRole,
+        AddressBookMyDescriptionRole,
+        AddressBookMyAB
     };
     //Q_ENUM(AddressBookRowRole)
 
@@ -62,6 +67,7 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     Q_INVOKABLE bool deleteRow(int row);
+    Q_INVOKABLE bool undeleteRow(int row);
     virtual QHash<int, QByteArray> roleNames() const  override;
 
 public slots:
@@ -78,6 +84,7 @@ class AddressBookModel : public QSortFilterProxyModel
   Q_OBJECT
   UnsortedAddressBookModel src_;
   QString filter_;
+  bool is_chat_;
 
 public:
   Q_ENUM(UnsortedAddressBookModel::AddressBookRowRole)
@@ -89,9 +96,13 @@ public:
   Q_INVOKABLE void setSortOrder(bool checked);
 
   Q_INVOKABLE bool deleteRow(int row);
+  Q_INVOKABLE bool undeleteRow(int row);
 
   Q_INVOKABLE QString getFilterString();
   Q_INVOKABLE void invalidate();
+
+protected:
+  bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 };
 
 #endif // ADDRESSBOOKMODEL_H

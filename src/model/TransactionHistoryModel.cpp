@@ -141,7 +141,7 @@ QVariant TransactionHistoryModel::data(const QModelIndex &index, int role) const
         result = parseTransactionInfo(tInfo, role);
     });
     if (!found) {
-        qCritical("%s: internal error: no transaction info for index %d", __FUNCTION__, index.row());
+        qCritical("TransactionHistoryModel::%s: internal error: no transaction info for index %d", __FUNCTION__, index.row());
     }
     return result;
 }

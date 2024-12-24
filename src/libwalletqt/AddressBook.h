@@ -41,19 +41,37 @@ struct AddressBook;
 }
 class AddressBookRow;
 
+
+extern const char *TAG_DELETE;
+extern const char *TAG_BLOCKED;
+
 class AddressBook : public QObject
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE bool newMultiUserRow(const QString &description) const;
+    Q_INVOKABLE int newMultiUserRow(const QString &description, const QString &ab, const QString &bg) const;
     Q_INVOKABLE bool getRow(int index, std::function<void (Monero::AddressBookRow &)> callback) const;
-    Q_INVOKABLE bool addRow(const QString &address, const QString &payment_id, const QString &description);
+    Q_INVOKABLE int addRow(const QString &address, const QString &payment_id, const QString &description, const QString &ab, const QString &bg, const QString &my_description, const QString &my_ab);
     Q_INVOKABLE bool deleteRow(int rowId);
+    Q_INVOKABLE bool blockRow(int rowId);
+    Q_INVOKABLE bool undeleteRow(int rowId);
+    Q_INVOKABLE bool unblockRow(int rowId);
+    Q_INVOKABLE bool isDeletedRow(int rowId);
+    Q_INVOKABLE bool isBlockedRow(int rowId);
+    Q_INVOKABLE bool isAnonRow(int rowId);
+    Q_INVOKABLE void setTags(int index, const QString& tags);
+    Q_INVOKABLE QString getTags(int index) const;
+    Q_INVOKABLE void addAttr(int index, const QString& name, const QString& val);
+    Q_INVOKABLE QString getAttr(int index, const QString& name) const;
+    Q_INVOKABLE bool delAttr(int index, const QString& name);
     quint64 count() const;
     Q_INVOKABLE QString errorString() const;
     Q_INVOKABLE int errorCode() const;
     Q_INVOKABLE QString getDescription(const QString &address) const;
     Q_INVOKABLE void setDescription(int index, const QString &label);
+    Q_INVOKABLE void setFields(int index, const QString &address, const QString &description, const QString &shortName, const QString &shortNameBackground);
+    Q_INVOKABLE QString getShortNameTextColor(const QString &backgroundAb);
+    Q_INVOKABLE QString getShortNameBackgroundColorRandomize();
     Q_INVOKABLE bool isMultiUser(int index);
 
     enum ErrorCode {

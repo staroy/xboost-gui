@@ -60,6 +60,11 @@ ColumnLayout {
             onSelected: settingsStateView.state = "Wallet"
         }
         MoneroComponents.NavbarItem {
+            active: settingsStateView.state == "Chat"
+            text: qsTr("Chat") + translationManager.emptyString
+            onSelected: settingsStateView.state = "Chat"
+        }
+        MoneroComponents.NavbarItem {
             active: settingsStateView.state == "UI"
             text: qsTr("Interface") + translationManager.emptyString
             onSelected: settingsStateView.state = "UI"
@@ -88,6 +93,7 @@ ColumnLayout {
         property Item currentView
         property Item previousView
         property SettingsWallet settingsWalletView: SettingsWallet { }
+        property SettingsChat settingsChatView: SettingsChat { }
         property SettingsLayout settingsLayoutView: SettingsLayout { }
         property SettingsNode settingsNodeView: SettingsNode { }
         property SettingsLog settingsLogView: SettingsLog { }
@@ -117,6 +123,10 @@ ColumnLayout {
                 name: "Wallet"
                 PropertyChanges { target: settingsStateView; currentView: settingsStateView.settingsWalletView }
                 PropertyChanges { target: settingsPage; settingsHeight: settingsStateView.settingsWalletView.settingsHeight + 140 }
+            }, State {
+                name: "Chat"
+                PropertyChanges { target: settingsStateView; currentView: settingsStateView.settingsChatView }
+                PropertyChanges { target: settingsPage; settingsHeight: settingsStateView.settingsChatView.chatHeight + 140 }
             }, State {
                 name: "UI"
                 PropertyChanges { target: settingsStateView; currentView: settingsStateView.settingsLayoutView }

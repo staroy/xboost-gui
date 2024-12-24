@@ -54,6 +54,7 @@ Rectangle {
 
     property int chatHeight: appWindow.height - 80
     property string currentAddress: ""
+    property bool currentIsMultiUser: false
     readonly property string vertexColor: MoneroComponents.Style.blackTheme ? "#303030" : "#C9C9C9"
     readonly property string itemBorderColor: MoneroComponents.Style.blackTheme ? "#404040" : "#B9B9B9"
     readonly property string dimmedColor: MoneroComponents.Style.blackTheme ? "#c9c9c9" : "#474747"
@@ -66,10 +67,11 @@ Rectangle {
         enableCommentsCheckBox.visible = false
     }
 
-    function setCurrent(address, isMultiUser)
+    function setCurrent(address, isMultiUser, myDescription, myAb)
     {
         currentAddress = address
-        currentWallet.messageListModel.setCurrent(address, isMultiUser)
+        currentWallet.messageListModel.setCurrent(address, isMultiUser, myDescription, myAb)
+        currentIsMultiUser = isMultiUser
         btnToParent.visible = false
         enableCommentsCheckBox.visible = true
     }
@@ -262,7 +264,7 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             acceptedButtons: Qt.LeftButton
-                            onClicked: pageChat.setCurrent(address, isMultiUser)
+                            onClicked: pageChat.setCurrent(address, isMultiUser, myDescription, myAb)
                         }
                     }
                     ScrollBar.vertical: ScrollBar {}
@@ -323,6 +325,65 @@ Rectangle {
                         currentWallet.messageListModel.setFilterString(text);
                     }
                 }
+
+                MoneroComponents.TextPlain {
+                    id: btnMessageChatMenu
+                    color: "transparent"
+
+                    Layout.topMargin: 28
+                    Layout.leftMargin: 10
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+
+                    Text {
+                        text: FontAwesome.arrowDown
+                        font.family: FontAwesome.fontFamilySolid
+                        font.pixelSize: 18
+                        color: dimmed2Color
+                        font.styleName: "Solid"
+                        opacity: 0.75
+                    }
+                
+                    MouseArea {
+                        id: chatPropertyMenu
+                        acceptedButtons: Qt.LeftButton
+                        anchors.fill: parent
+                        onClicked: {
+                            if (mouse.button === Qt.LeftButton) {
+                                chatPropertyContextMenu1.enabled = !currentWallet.messageListModel.getViewDeleted()
+                                chatPropertyContextMenu2.enabled = currentWallet.messageListModel.getViewDeleted()
+                                chatPropertyContextMenu.open()
+                            }
+                        }
+                        Menu {
+                            id: chatPropertyContextMenu
+                        
+                            background: Rectangle {
+                                border.color: MoneroComponents.Style.buttonBackgroundColorDisabledHover
+                                border.width: 1
+                                radius: 2
+                                color: MoneroComponents.Style.blackTheme ? MoneroComponents.Style.buttonBackgroundColorDisabled : "#E5E5E5"
+                            }
+                        
+                            padding: 1
+                            width: 160
+                            x: chatPropertyMenu.mouseX
+                            y: chatPropertyMenu.mouseY
+
+                            MoneroComponents.ContextMenuItem {
+                                id: chatPropertyContextMenu1
+                                onTriggered: currentWallet.messageListModel.setViewDeleted(!currentWallet.messageListModel.getViewDeleted())
+                                text: qsTr("View deleted") + translationManager.emptyString
+                            }
+                        
+                            MoneroComponents.ContextMenuItem {
+                                id: chatPropertyContextMenu2
+                                onTriggered: currentWallet.messageListModel.setViewDeleted(!currentWallet.messageListModel.getViewDeleted())
+                                text: qsTr("Disable deleted") + translationManager.emptyString
+                            }
+                        }
+                    }
+                }
             }
 
             RowLayout {
@@ -372,7 +433,7 @@ Rectangle {
                         }
 
                         Rectangle {
-                            id: textArea
+                            id: txtArea
                             x: isTitle ? (messageListRow.width - textItemWidth)/2 : (sendByMe ? messageListRow.width - textItemWidth : (isMultiUser ? 40 : 10))
                             y: 6
                             height: textItemHeight + 25 + (isEnableComments ? 22 : 0)
@@ -389,21 +450,92 @@ Rectangle {
                                 x: fieldTextX
                                 width: textItemWidth - 16
                                 height: textItemHeight - 10
-                                text: textArea.fullText
+                                text: txtArea.fullText
                                 readOnly: true
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: 16
-                                color: textColor
+                                color: isDeleted ? dimmed2Color : textColor
                                 selectByMouse: true
                                 selectedTextColor: MoneroComponents.Style.blackTheme ? "#333333" : "#cccccc"
                                 selectionColor: MoneroComponents.Style.blackTheme ? "#cccccc" : "#333333"
+
+                                MouseArea {
+                                    id: txtAreaMenu
+                                    acceptedButtons: Qt.RightButton
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (mouse.button === Qt.RightButton) {
+                                            txtAreaMenu.parent.persistentSelection = true;
+                                            txtAreaContextMenu1.enabled = !isDeleted
+                                            txtAreaContextMenu2.enabled = isDeleted
+                                            txtAreaContextMenu.open()
+                                            txtAreaMenu.parent.cursorVisible = true;
+                                        }
+                                    }
+                                    Menu {
+                                        id: txtAreaContextMenu
+                                    
+                                        background: Rectangle {
+                                            border.color: MoneroComponents.Style.buttonBackgroundColorDisabledHover
+                                            border.width: 1
+                                            radius: 2
+                                            color: MoneroComponents.Style.blackTheme ? MoneroComponents.Style.buttonBackgroundColorDisabled : "#E5E5E5"
+                                        }
+                                    
+                                        padding: 1
+                                        width: 170
+                                        x: txtAreaMenu.mouseX
+                                        y: txtAreaMenu.mouseY
+                                        
+                                        MoneroComponents.ContextMenuItem {
+                                            enabled: txtAreaMenu.parent.selectedText != ""
+                                            onTriggered: txtAreaMenu.parent.copy()
+                                            text: qsTr("Copy") + translationManager.emptyString
+                                        }
+                                        
+                                        MoneroComponents.ContextMenuItem {
+                                            enabled: txtAreaMenu.parent.canPaste === true
+                                            onTriggered: txtAreaMenu.parent.paste()
+                                            text: qsTr("Paste") + translationManager.emptyString
+                                        }
+                                        
+                                        MoneroComponents.ContextMenuItem {
+                                            enabled: txtAreaMenu.parent.text != ""
+                                            onTriggered: txtAreaMenu.parent.selectAll()
+                                            text: qsTr("Select All") + translationManager.emptyString
+                                        }
+
+                                        Rectangle {
+                                            color: MoneroComponents.Style.buttonBackgroundColorDisabledHover
+                                            height: 1
+                                            
+                                            MoneroEffects.ColorTransition {
+                                                targetObj: parent
+                                                blackColor: MoneroComponents.Style.buttonBackgroundColorDisabledHover
+                                                whiteColor: MoneroComponents.Style.buttonBackgroundColorDisabledHover
+                                            }
+                                        }
+
+                                        MoneroComponents.ContextMenuItem {
+                                            id: txtAreaContextMenu1
+                                            onTriggered: currentWallet.messageListModel.del(n_index)
+                                            text: qsTr("Delete message") + translationManager.emptyString
+                                        }
+                                    
+                                        MoneroComponents.ContextMenuItem {
+                                            id: txtAreaContextMenu2
+                                            onTriggered: currentWallet.messageListModel.undel(n_index)
+                                            text: qsTr("Undelete message") + translationManager.emptyString
+                                        }
+                                    }
+                                }
                             }
 
                             Text {
                                 id: dummyText
                                 visible: false
                                 font.pixelSize: 16
-                                text: textArea.fullText
+                                text: txtArea.fullText
                             }
 
                             Label {
@@ -435,20 +567,25 @@ Rectangle {
                                 color: textColor
                                 text: "..."
                                 visible: isEnableComments
+                                MouseArea {
+                                    anchors.fill: parent
+                                    //hoverEnabled: true
+                                    onClicked: pageChat.setSubChat(txid);
+                                }
                             }
-
+                            
                             Rectangle {
                                 id: btnComments
                                 color: "transparent"
-
+                            
                                 y: textItemHeight + 22
                                 x: textItemWidth - 24
                             
                                 width: 20
                                 height: 20
-
+                            
                                 visible: isEnableComments && !isTitle
-
+                            
                                 Text {
                                     text: FontAwesome.arrowRight
                                     font.family: FontAwesome.fontFamilySolid
@@ -459,7 +596,7 @@ Rectangle {
                                 }
                                 MouseArea {
                                     anchors.fill: parent
-                                    hoverEnabled: true
+                                    //hoverEnabled: true
                                     onClicked: pageChat.setSubChat(txid);
                                 }
                             }
@@ -502,9 +639,10 @@ Rectangle {
                       if(textToSend.text.length > 0) {
                         currentWallet.messageListModel.append(
                             textToSend.text.substring(0, textToSend.text.length),
-                            enableCommentsCheckBox.checked,
+                            enableCommentsCheckBox.checked, currentIsMultiUser,
                             0, false)
                         textToSend.text = ""
+                        enableCommentsCheckBox.checked = false
                       }
                     }
                 }
@@ -534,9 +672,10 @@ Rectangle {
                         onClicked: {
                             currentWallet.messageListModel.append(
                                 textToSend.text.substring(0, textToSend.text.length),
-                                enableCommentsCheckBox.checked,
+                                enableCommentsCheckBox.checked, currentIsMultiUser,
                                 0, false)
                             textToSend.text = ""
+                            enableCommentsCheckBox.checked = false
                         }
                     }
                 }

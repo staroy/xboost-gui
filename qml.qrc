@@ -184,6 +184,7 @@
         <file>components/RadioButton.qml</file>
         <file>pages/settings/Settings.qml</file>
         <file>pages/settings/SettingsWallet.qml</file>
+        <file>pages/settings/SettingsChat.qml</file>
         <file>pages/settings/SettingsNode.qml</file>
         <file>pages/settings/SettingsLog.qml</file>
         <file>pages/settings/SettingsLayout.qml</file>
