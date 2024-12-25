@@ -724,10 +724,15 @@ Rectangle {
                 }
             }
         }
+
+
         ColumnLayout {
             id: newMultiUserLayout
             visible: false
             spacing: 0
+
+            Layout.fillWidth: true
+            Layout.topMargin: 20
 
             MoneroComponents.Label {
                 fontSize: 32
@@ -735,58 +740,66 @@ Rectangle {
                 text: qsTr("New multi user") + translationManager.emptyString
             }
 
-            MoneroComponents.LineEdit {
-                id: descriptionNmuLine
-                KeyNavigation.tab: addNmuButton.enabled ? addNmuButton : cancelNmuButton
-                Layout.topMargin: 20
-                Layout.fillWidth: true
-                fontSize: 16
-                placeholderFontSize: 16
-                labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style> %1"
-                    .arg(qsTr("Description")) + translationManager.emptyString
-                placeholderText: qsTr("Add a name...") + translationManager.emptyString
-                onAccepted: addNmuButton.enabled ? addNmuButton.clicked() : ""
-            }
+            GridLayout {
+                columns: 3
+                rows: 2
+                rowSpacing: 20
+                columnSpacing: 15
 
-            ColumnLayout {
                 MoneroComponents.LineEdit {
-                    id: shortNmuAbLine
+                    id: descriptionNmuLine
+                    KeyNavigation.tab: addNmuButton.enabled ? addNmuButton : cancelNmuButton
+                    Layout.columnSpan: 3
+                    Layout.topMargin: 20
+                    Layout.fillWidth: true
                     fontSize: 16
                     placeholderFontSize: 16
-                    placeholderText: qsTr("Short ...") + translationManager.emptyString
-                    onTextChanged: rectangleNmuAbText.text = text
+                    labelText: "<style type='text/css'>a {text-decoration: none; color: #858585; font-size: 14px;}</style> %1"
+                        .arg(qsTr("Description")) + translationManager.emptyString
+                    placeholderText: qsTr("Add a name...") + translationManager.emptyString
+                    onAccepted: addNmuButton.enabled ? addNmuButton.clicked() : ""
                 }
-            }
-
-            ColumnLayout {
-                Rectangle {
-                    id: rectangleNmuAbBackground
-                    radius: 14
-                    width: 28
-                    height: 28
-                    Label {
-                        id: rectangleNmuAbText
-                        anchors.centerIn: parent
-                        font.pixelSize: 13
+                
+                ColumnLayout {
+                    MoneroComponents.LineEdit {
+                        id: shortNmuAbLine
+                        fontSize: 16
+                        placeholderFontSize: 16
+                        placeholderText: qsTr("Short ...") + translationManager.emptyString
+                        onTextChanged: rectangleNmuAbText.text = text
                     }
                 }
-
-            }
-            
-            ColumnLayout {
-                MoneroComponents.StandardButton {
-                    id: changeNmuBackgrownd
-                    small: true
-                    text: qsTr("Short background") + translationManager.emptyString
-                    primary: false
-                    onClicked: dialogNmuAbBackground.open();
+                
+                ColumnLayout {
+                    Rectangle {
+                        id: rectangleNmuAbBackground
+                        radius: 14
+                        width: 28
+                        height: 28
+                        Label {
+                            id: rectangleNmuAbText
+                            anchors.centerIn: parent
+                            font.pixelSize: 13
+                        }
+                    }
+                
+                }
+                
+                ColumnLayout {
+                    MoneroComponents.StandardButton {
+                        id: changeNmuBackgrownd
+                        small: true
+                        text: qsTr("Short background") + translationManager.emptyString
+                        primary: false
+                        onClicked: dialogNmuAbBackground.open();
+                    }
                 }
             }
-
+    
             RowLayout {
                 Layout.topMargin: 20
                 Layout.alignment: Qt.AlignRight
-
+            
                 MoneroComponents.StandardButton {
                     id: cancelNmuButton
                     KeyNavigation.backtab: addNmuButton
@@ -795,7 +808,7 @@ Rectangle {
                     primary: false
                     onClicked: root.showAddressBook();
                 }
-
+            
                 MoneroComponents.StandardButton {
                     id: deleteNmuButton
                     KeyNavigation.backtab: cancelNmuButton
@@ -808,7 +821,7 @@ Rectangle {
                         root.showAddressBook();
                     }
                 }
-
+            
                 MoneroComponents.StandardButton {
                     id: addNmuButton
                     KeyNavigation.backtab: descriptionNmuLine
@@ -824,7 +837,7 @@ Rectangle {
                             informationPopup.title = qsTr("Error") + translationManager.emptyString;
                             // TODO: check currentWallet.addressBook.errorString() instead.
                             informationPopup.text  = currentWallet.addressBook.errorString()
-
+            
                             informationPopup.onCloseCallback = null
                             informationPopup.open();
                         }

@@ -210,6 +210,66 @@
         <source>OpenAlias error</source>
         <translation>Ошибка OpenAlias</translation>
     </message>
+    <message>
+        <source>New multi user</source>
+        <translation>Новый общий чат</translation>
+    </message>
+    <message>
+        <source>Short ...</source>
+        <translation>Коротко ...</translation>
+    </message>
+    <message>
+        <source>Short</source>
+        <translation>Коротко</translation>
+    </message>
+    <message>
+        <source>Short background</source>
+        <translation>Фоновый цвет</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Новый</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Новый</translation>
+    </message>
+    <message>
+        <source>My description</source>
+        <translation>Моё описание</translation>
+    </message>
+    <message>
+        <source>My short</source>
+        <translation>Моё коротко</translation>
+    </message>
+    <message>
+        <source>My short ...</source>
+        <translation>Моё коротко ...</translation>
+    </message>
+    <message>
+        <source>Add my name...</source>
+        <translation>Добавить моё описание...</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Заблокировано</translation>
+    </message>
+    <message>
+        <source>Deleted</source>
+        <translation>Удалено</translation>
+    </message>
+    <message>
+        <source>Block</source>
+        <translation>Заблокировать</translation>
+    </message>
+    <message>
+        <source>Undelete</source>
+        <translation>Восстановить</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Разблокировать</translation>
+    </message>
 </context>
 <context>
     <name>Advanced</name>
